@@ -63,10 +63,10 @@ function ChatReceiver() {
 function ChannelDemo() {
   return (
     <div style={{ fontFamily: "sans-serif" }}>
-      <h3>useChannel — Pub/Sub Event Bus</h3>
       <p>
-        Cross-component communication without prop drilling. Both components
-        subscribe to the <code>"chat"</code> channel.
+        The Sender uses <code>useChannel("chat")</code> (send-only). The Receiver
+        uses <code>useChannel("chat", listener)</code> (subscribe + send).
+        No shared parent state or context needed.
       </p>
       <div style={{ display: "flex", gap: 16 }}>
         <ChatSender />
@@ -78,10 +78,91 @@ function ChannelDemo() {
 
 const meta: Meta = {
   title: "Workers & Communication/useChannel",
+  parameters: {
+    docs: {
+      description: {
+        component: [
+          "## `useChannel<T>(channel: string, listener?: (msg: T) => void): (msg: T) => void`",
+          "",
+          "Lightweight **pub/sub event bus** for cross-component communication without prop drilling or context.",
+          "",
+          "### How it works internally",
+          "1. Uses a global singleton `Map<string, Set<listener>>` as the event bus.",
+          "2. `useChannel(name)` returns a `send` function that emits to all subscribers on that channel.",
+          "3. `useChannel(name, listener)` also subscribes — the listener receives all messages.",
+          "4. Automatically unsubscribes on unmount (no memory leaks).",
+          "5. Multiple components can subscribe to the same channel \u2014 all receive all messages.",
+          "",
+          "### API",
+          "",
+          "**Overload 1 (send only):**",
+          "```tsx",
+          "const send = useChannel<{ type: string }>('notifications');",
+          "send({ type: 'info' });  // emits to all listeners",
+          "```",
+          "",
+          "**Overload 2 (send + receive):**",
+          "```tsx",
+          "const send = useChannel<{ type: string }>('notifications', (msg) => {",
+          "  console.log('Received:', msg);",
+          "});",
+          "```",
+          "",
+          "| Param | Type | Description |",
+          "|---|---|---|",
+          "| `channel` | `string` | Channel name/identifier |",
+          "| `listener` | `(msg: T) => void` | Optional message handler |",
+          "",
+          "**Returns** `(msg: T) => void` \u2014 send function.",
+          "",
+          "### Additional exports",
+          "- `resetChannels()` \u2014 clears all subscriptions (useful for testing).",
+          "",
+          "### When to use",
+          "- Decoupled components that need to communicate (e.g. sidebar \u2194 main panel)",
+          "- Global notifications / toasts / alerts without a provider",
+          "- Event-driven architectures within React",
+        ].join("\n"),
+      },
+    },
+  },
 };
 
 export default meta;
 
 export const PubSubChat: StoryObj = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Type a message in the Sender and press Enter or click Send. The Receiver picks it up via the `\"chat\"` channel. These components have **no shared state** — communication is entirely through the channel event bus.",
+      },
+      source: {
+        code: `// Sender: only sends, no listener
+function ChatSender() {
+  const send = useChannel<{ user: string; text: string }>("chat");
+
+  return (
+    <button onClick={() => send({ user: "Alice", text: "Hello!" })}>
+      Send
+    </button>
+  );
+}
+
+// Receiver: subscribes + can also send
+function ChatReceiver() {
+  const [messages, setMessages] = useState([]);
+
+  useChannel<{ user: string; text: string }>("chat", (msg) => {
+    setMessages(m => [...m, msg]);
+  });
+
+  return messages.map(msg => <div>{msg.user}: {msg.text}</div>);
+}
+
+// No context provider needed — just use the same channel name!`,
+      },
+    },
+  },
   render: () => <ChannelDemo />,
 };

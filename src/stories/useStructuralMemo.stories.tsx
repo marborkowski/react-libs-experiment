@@ -25,11 +25,6 @@ function StructuralMemoDemo() {
 
   return (
     <div style={{ fontFamily: "sans-serif" }}>
-      <h3>useStructuralMemo — Structural Equality</h3>
-      <p>
-        Returns the same reference if the computed value is structurally
-        identical, preventing unnecessary downstream re-renders.
-      </p>
       <div style={{ display: "flex", gap: 24, marginBottom: 12 }}>
         <label>
           Width:{" "}
@@ -82,7 +77,7 @@ function StructuralMemoDemo() {
                 color: memoChanged ? "#e74c3c" : "#27ae60",
               }}
             >
-              {memoChanged ? "YES (new ref)" : "Same ref ✓"}
+              {memoChanged ? "YES (new ref)" : "Same ref"}
             </td>
           </tr>
         </tbody>
@@ -98,10 +93,81 @@ function StructuralMemoDemo() {
 
 const meta: Meta = {
   title: "Performance & Memoization/useStructuralMemo",
+  parameters: {
+    docs: {
+      description: {
+        component: [
+          "## `useStructuralMemo<T>(factory: () => T, deps: DependencyList): T`",
+          "",
+          "Like `useMemo`, but with **structural equality** — if the factory produces a value",
+          "that is deeply equal to the previous one, the old reference is returned.",
+          "",
+          "### How it works internally",
+          "1. Runs `factory()` whenever `deps` change (same as `useMemo`).",
+          "2. Compares the new result with the previously cached result using `deepEqual`.",
+          "3. If structurally identical \u2192 returns the **old** reference (no new object).",
+          "4. If different \u2192 caches and returns the **new** reference.",
+          "",
+          "### API",
+          "| Param | Type | Description |",
+          "|---|---|---|",
+          "| `factory` | `() => T` | Computation function (same as useMemo) |",
+          "| `deps` | `DependencyList` | Dependency array (same as useMemo) |",
+          "",
+          "**Returns** `T` \u2014 memoized value with reference stability guarantee.",
+          "",
+          "```tsx",
+          "// Without useStructuralMemo:",
+          "const config = useMemo(() => ({ theme, locale }), [theme, locale]);",
+          "// config is a NEW object every time deps change, even if values are same",
+          "",
+          "// With useStructuralMemo:",
+          "const config = useStructuralMemo(() => ({ theme, locale }), [theme, locale]);",
+          "// config keeps the SAME reference if { theme, locale } hasn't changed",
+          "",
+          "// This prevents cascading re-renders in children that use config as a prop",
+          "<MemoizedChild config={config} />",
+          "```",
+          "",
+          "### When to use",
+          "- Derived objects/arrays passed as props to `React.memo` children",
+          "- Preventing re-renders when the computed shape hasn't really changed",
+          "- API response transforms where the shape is stable but the reference isn't",
+        ].join("\n"),
+      },
+    },
+  },
 };
 
 export default meta;
 
 export const StructuralEquality: StoryObj = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Compare a regular `{ width, height }` object (new reference every render) vs `useStructuralMemo(() => ({ width, height }), [width, height])`. Click \"Force re-render\" without changing width/height — the regular object creates a new reference, but `useStructuralMemo` returns the same one since the values are deeply equal.",
+      },
+      source: {
+        code: `const [width, setWidth] = useState(100);
+const [height, setHeight] = useState(50);
+
+// Regular object: NEW reference on every render
+const regularObj = { width, height };
+
+// Structural memo: SAME reference if values unchanged
+const memoizedObj = useStructuralMemo(
+  () => ({ width, height }),
+  [width, height]
+);
+
+// regularObj !== previousRegularObj  (always true, even if values same)
+// memoizedObj === previousMemoizedObj (true when values unchanged!)
+
+// Pass to memo'd child — avoids unnecessary re-renders
+<MemoizedCanvas dimensions={memoizedObj} />`,
+      },
+    },
+  },
   render: () => <StructuralMemoDemo />,
 };

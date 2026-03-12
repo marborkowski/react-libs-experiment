@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useAsyncState } from "../hooks/useAsyncState";
 
 // ---------------------------------------------------------------------------
-// Story 1: Full-featured data fetching (retry, cancel, setData, callbacks)
+// Story 1: Full-featured data fetching
 // ---------------------------------------------------------------------------
 function FullFeaturedFetch() {
   const [userId, setUserId] = useState(1);
@@ -35,14 +35,6 @@ function FullFeaturedFetch() {
 
   return (
     <div style={{ fontFamily: "sans-serif" }}>
-      <h3>useAsyncState — Full-Featured Fetch</h3>
-      <p>
-        Demonstrates <strong>retry</strong> (2 attempts, 500ms exponential backoff),{" "}
-        <strong>cancel</strong>, <strong>setData</strong>, and{" "}
-        <strong>onSuccess / onError</strong> callbacks.
-      </p>
-
-      {/* User selector */}
       <div style={{ marginBottom: 12 }}>
         <strong>User ID: </strong>
         {[1, 2, 3, 4, 5].map((id) => (
@@ -65,7 +57,6 @@ function FullFeaturedFetch() {
         ))}
       </div>
 
-      {/* Action buttons */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <button onClick={retry} disabled={loading}>
           Retry manually
@@ -82,7 +73,6 @@ function FullFeaturedFetch() {
         </button>
       </div>
 
-      {/* State display */}
       <div
         style={{
           display: "grid",
@@ -93,8 +83,12 @@ function FullFeaturedFetch() {
       >
         <div style={{ background: "#f5f5f5", padding: 12, borderRadius: 6 }}>
           <strong>State:</strong>
-          <div>loading: <code>{String(loading)}</code></div>
-          <div>error: <code>{error ? error.message : "null"}</code></div>
+          <div>
+            loading: <code>{String(loading)}</code>
+          </div>
+          <div>
+            error: <code>{error ? error.message : "null"}</code>
+          </div>
           {data && (
             <pre style={{ margin: "8px 0 0", fontSize: 13 }}>
               {JSON.stringify(data, null, 2)}
@@ -130,7 +124,7 @@ function FullFeaturedFetch() {
 }
 
 // ---------------------------------------------------------------------------
-// Story 2: Retry with simulated failures + exponential backoff visualization
+// Story 2: Retry with exponential backoff visualization
 // ---------------------------------------------------------------------------
 let failCount = 0;
 
@@ -167,10 +161,12 @@ function RetryDemo() {
 
   return (
     <div style={{ fontFamily: "sans-serif" }}>
-      <h3>useAsyncState — Retry with Exponential Backoff</h3>
       <p>
         Configure how many times the request fails and watch the retry timing.
-        Delay doubles each attempt: {retryDelay}ms → {retryDelay * 2}ms → {retryDelay * 4}ms...
+        Delay doubles each attempt:{" "}
+        <code>
+          {retryDelay}ms \u2192 {retryDelay * 2}ms \u2192 {retryDelay * 4}ms
+        </code>
       </p>
 
       <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
@@ -218,10 +214,13 @@ function RetryDemo() {
         Retry
       </button>
 
-      {/* Timeline */}
-      <div style={{ background: "#f5f5f5", padding: 12, borderRadius: 6, marginBottom: 12 }}>
+      <div
+        style={{ background: "#f5f5f5", padding: 12, borderRadius: 6, marginBottom: 12 }}
+      >
         <strong>Attempt timeline:</strong>
-        {attempts.length === 0 && <div style={{ color: "#888" }}>Click "Run experiment"</div>}
+        {attempts.length === 0 && (
+          <div style={{ color: "#888" }}>Click "Run experiment"</div>
+        )}
         {attempts.map((a, i) => (
           <div
             key={i}
@@ -251,7 +250,6 @@ function RetryDemo() {
         ))}
       </div>
 
-      {/* Result */}
       {loading && <p>Loading (attempt in progress)...</p>}
       {error && <p style={{ color: "#e74c3c" }}>Final error: {error.message}</p>}
       {data && !loading && (
@@ -264,7 +262,7 @@ function RetryDemo() {
 }
 
 // ---------------------------------------------------------------------------
-// Story 3: Deferred execution (immediate: false) + cancel demo
+// Story 3: Deferred execution (immediate: false) + cancel
 // ---------------------------------------------------------------------------
 function DeferredAndCancel() {
   const [query, setQuery] = useState("");
@@ -272,7 +270,6 @@ function DeferredAndCancel() {
 
   const { data, loading, error, retry, cancel } = useAsyncState(
     async (signal) => {
-      // Simulate a slow search
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(resolve, 2000);
         signal.addEventListener("abort", () => {
@@ -297,10 +294,9 @@ function DeferredAndCancel() {
 
   return (
     <div style={{ fontFamily: "sans-serif" }}>
-      <h3>useAsyncState — Deferred (immediate: false) + Cancel</h3>
       <p>
-        The async function does <strong>not</strong> run on mount. You trigger it
-        manually. Takes 2s — try cancelling mid-flight.
+        With <code>immediate: false</code>, the async function does not run on mount.
+        You trigger it manually. This search simulates a 2s delay — try cancelling mid-flight.
       </p>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <input
@@ -356,18 +352,163 @@ function DeferredAndCancel() {
 // ---------------------------------------------------------------------------
 const meta: Meta = {
   title: "Effects & Lifecycle/useAsyncState",
+  parameters: {
+    docs: {
+      description: {
+        component: [
+          "## `useAsyncState<T>(asyncFn, deps, options?): AsyncStateReturn<T>`",
+          "",
+          "**Async-native state primitive** with built-in loading/error tracking,",
+          "cancellation, retry with exponential backoff, and lifecycle callbacks.",
+          "",
+          "### How it works internally",
+          "1. Wraps the async function in an `AbortController` — passes `signal` to your function.",
+          "2. When `deps` change, the previous in-flight request is **auto-cancelled** (race condition protection).",
+          "3. On unmount, the current request is auto-cancelled (no state updates after unmount).",
+          "4. On error, retries up to `retryCount` times with exponential backoff (`retryDelay * 2^attempt`).",
+          "5. State machine: `idle \u2192 loading \u2192 success | error`.",
+          "",
+          "### API",
+          "| Param | Type | Description |",
+          "|---|---|---|",
+          "| `asyncFn` | `(signal: AbortSignal) => Promise<T>` | Your async function |",
+          "| `deps` | `DependencyList` | Re-executes when these change |",
+          "| `options.immediate` | `boolean` (`true`) | Run on mount? |",
+          "| `options.retryCount` | `number` (`0`) | Max retry attempts |",
+          "| `options.retryDelay` | `number` (`1000`) | Base delay (ms), doubles each retry |",
+          "| `options.onSuccess` | `(data) => void` | Called on success |",
+          "| `options.onError` | `(error) => void` | Called on final failure |",
+          "",
+          "**Returns:**",
+          "| Field | Type | Description |",
+          "|---|---|---|",
+          "| `data` | `T \\| undefined` | Resolved data |",
+          "| `loading` | `boolean` | Is the request in flight? |",
+          "| `error` | `Error \\| undefined` | Last error |",
+          "| `retry()` | `() => void` | Re-execute the async function |",
+          "| `cancel()` | `() => void` | Abort the current request |",
+          "| `setData(data)` | `(data: T) => void` | Manually set data (optimistic updates) |",
+          "",
+          "```tsx",
+          "const { data, loading, error, retry, cancel, setData } = useAsyncState(",
+          "  async (signal) => {",
+          "    const res = await fetch('/api/users', { signal });",
+          "    return res.json();",
+          "  },",
+          "  [page],",
+          "  { retryCount: 3, retryDelay: 500, onError: (e) => toast.error(e.message) }",
+          ");",
+          "```",
+        ].join("\n"),
+      },
+    },
+  },
 };
 
 export default meta;
 
 export const FullFeatured: StoryObj = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Fetches user data from JSONPlaceholder with `retryCount: 2` and `retryDelay: 500ms`. Demonstrates all returned fields: `data`, `loading`, `error`, `retry()`, `cancel()`, `setData()`. The event log panel shows `onSuccess`/`onError` callbacks firing in real-time. Switch user IDs rapidly to see auto-cancellation of previous requests.",
+      },
+      source: {
+        code: `const { data, loading, error, retry, cancel, setData } = useAsyncState(
+  async (signal) => {
+    const res = await fetch(\`/api/users/\${userId}\`, { signal });
+    if (!res.ok) throw new Error(\`HTTP \${res.status}\`);
+    return res.json();
+  },
+  [userId],  // re-fetches when userId changes, cancels previous
+  {
+    retryCount: 2,         // retry up to 2 times on failure
+    retryDelay: 500,       // 500ms -> 1000ms exponential backoff
+    onSuccess: (d) => console.log('Fetched:', d),
+    onError: (e) => console.error('Failed:', e),
+  }
+);
+
+// Manual controls
+<button onClick={retry}>Retry</button>
+<button onClick={cancel}>Cancel</button>
+<button onClick={() => setData(optimisticValue)}>setData</button>`,
+      },
+    },
+  },
   render: () => <FullFeaturedFetch />,
 };
 
 export const RetryWithBackoff: StoryObj = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Simulates a flaky API that fails N times before succeeding. Configure `retryCount` and `retryDelay` to see exponential backoff in action. The timeline visualizes each attempt with its timestamp — notice how delays double: 800ms, 1600ms, 3200ms. If failures exceed retryCount, the final error is surfaced.",
+      },
+      source: {
+        code: `// Simulated flaky API
+const { data, loading, error, retry } = useAsyncState(
+  async () => {
+    attemptCount++;
+    if (attemptCount <= failTimes) {
+      throw new Error(\`Simulated failure #\${attemptCount}\`);
+    }
+    return { message: 'Success!' };
+  },
+  [trigger],
+  {
+    retryCount: 3,    // max 3 retries after initial failure
+    retryDelay: 800,  // 800ms -> 1600ms -> 3200ms (exponential)
+  }
+);
+
+// Backoff formula: retryDelay * 2^attempt
+// Attempt 0: immediate
+// Attempt 1: 800ms wait
+// Attempt 2: 1600ms wait
+// Attempt 3: 3200ms wait`,
+      },
+    },
+  },
   render: () => <RetryDemo />,
 };
 
 export const DeferredExecution: StoryObj = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `immediate: false`, the async function does NOT run on mount — you trigger it manually. This is useful for search forms, form submissions, or any user-initiated async action. The 2-second simulated delay lets you test mid-flight cancellation via `cancel()` and re-execution via `retry()`.",
+      },
+      source: {
+        code: `const { data, loading, error, retry, cancel } = useAsyncState(
+  async (signal) => {
+    // Use signal for cancellation support
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 2000);
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      });
+    });
+    return { results: ['...'] };
+  },
+  [trigger],
+  { immediate: false }  // does NOT run on mount
+);
+
+// Manually trigger execution
+const search = () => setTrigger(t => t + 1);
+
+// Cancel mid-flight
+<button onClick={cancel} disabled={!loading}>Cancel</button>
+
+// Re-run last query
+<button onClick={retry}>Retry</button>`,
+      },
+    },
+  },
   render: () => <DeferredAndCancel />,
 };
