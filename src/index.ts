@@ -3,6 +3,7 @@ export { useReactive } from './hooks/useReactive';
 export { useHistory } from './hooks/useHistory';
 export { useLens } from './hooks/useLens';
 export { useSharedState } from './hooks/useSharedState';
+export type { SharedStateOptions, StorageAdapter } from './hooks/useSharedState';
 
 // Effects & Lifecycle
 export { useWhen, useWhenChanged } from './hooks/useWhen';
